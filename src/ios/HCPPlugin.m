@@ -328,6 +328,38 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
 }
 
 /**
+ *  Get current application's hash history path (i.e. the current URL fragment).
+ *
+ *  @return current path
+ */
+- (NSString *)currentHashHistoryPath {
+#ifdef __CORDOVA_4_0_0
+    NSString *currentUrl = [self.webViewEngine URL].absoluteString;
+#else
+    NSString *currentUrl = [self.webView.request URL].absoluteString;
+#endif
+
+    NSRange hashPosition = [currentUrl rangeOfString: @"#" options:(NSBackwardsSearch)];
+    if (hashPosition.location == NSNotFound) {
+        return @"#/";
+    }
+
+    return [currentUrl substringFromIndex: hashPosition.location];
+}
+
+/**
+ *  Get index page file with current path for the application.
+ *
+ *  @return application's index page with current path
+ */
+- (NSString *)indexPageWithCurrentApplicationPath {
+    NSString *indexPage = [self indexPageFromConfigXml];
+    NSString *currentPath = [self currentHashHistoryPath];
+
+    return [indexPage stringByAppendingString:currentPath];
+}
+
+/**
  *  Notify JavaScript module about occured event. 
  *  For that we will use callback, received on plugin initialization stage.
  *
@@ -652,8 +684,8 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
     // send notification to the default callback
     [self invokeDefaultCallbackWithMessage:pluginResult];
     
-    // reload application to the index page
-    [self loadURL:[self indexPageFromConfigXml]];
+    // reload application to the current path with index page located in the new folder
+    [self loadURL:[self indexPageWithCurrentApplicationPath]];
     
     [self cleanupFileSystemFromOldReleases];
 }
@@ -675,7 +707,7 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
         [self loadApplicationConfig];
     }
     
-    [self loadURL:[self indexPageFromConfigXml]];
+    [self loadURL:[self indexPageWithCurrentApplicationPath]];
 }
 
 /**

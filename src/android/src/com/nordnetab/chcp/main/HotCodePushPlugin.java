@@ -67,6 +67,8 @@ public class HotCodePushPlugin extends CordovaPlugin {
     private static final String WWW_FOLDER = "www";
     private static final String LOCAL_ASSETS_FOLDER = "file:///android_asset/www";
 
+    private static final String HASH_HISTORY_APPLICATION_ROOT = "#/";
+
     private String startingPage;
     private IObjectFileStorage<ApplicationConfig> appConfigStorage;
     private PluginInternalPreferences pluginInternalPrefs;
@@ -126,7 +128,7 @@ public class HotCodePushPlugin extends CordovaPlugin {
         // reload only if we on local storage
         if (!dontReloadOnStart) {
             dontReloadOnStart = true;
-            redirectToLocalStorageIndexPage();
+            redirectToExternalStorageIndexPageWithCurrentPath();
         }
 
         // install update if there is anything to install
@@ -598,9 +600,10 @@ public class HotCodePushPlugin extends CordovaPlugin {
     }
 
     /**
-     * Redirect user onto the page, that resides on the external storage instead of the assets folder.
+     * Redirect user onto the page that resides on the external storage instead of the assets folder.
+     * Keep the application's current hash history path (i.e. the URL fragment).
      */
-    private void redirectToLocalStorageIndexPage() {
+    private void redirectToExternalStorageIndexPageWithCurrentPath() {
         final String indexPage = getStartingPage();
 
         // remove query and fragment parameters from the index page path
@@ -623,11 +626,18 @@ public class HotCodePushPlugin extends CordovaPlugin {
             return;
         }
 
-        // load index page from the external source
-        external = Paths.get(fileStructure.getWwwFolder(), indexPage);
-        webView.loadUrlIntoView(FILE_PREFIX + external, false);
+        // Get current hash history path within the application
+        String currentUrl = webView.getUrl();
+        int currentUrlHashIndex = currentUrl.lastIndexOf("#");
+        String relativePath = currentUrlHashIndex >= 0
+            ? currentUrl.substring(currentUrlHashIndex)
+            : HASH_HISTORY_APPLICATION_ROOT;
 
-        Log.d("CHCP", "Loading external page: " + external);
+        // Redirect to the external index page maintaining the current path
+        String redirectUrl = FILE_PREFIX + external + relativePath;
+        webView.loadUrlIntoView(redirectUrl, false);
+
+        Log.d("CHCP", "Loading external page: " + redirectUrl);
     }
 
     /**
@@ -860,7 +870,7 @@ public class HotCodePushPlugin extends CordovaPlugin {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                HotCodePushPlugin.this.redirectToLocalStorageIndexPage();
+                HotCodePushPlugin.this.redirectToExternalStorageIndexPageWithCurrentPath();
             }
         });
 
@@ -972,7 +982,7 @@ public class HotCodePushPlugin extends CordovaPlugin {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                redirectToLocalStorageIndexPage();
+                redirectToExternalStorageIndexPageWithCurrentPath();
             }
         });
     }
