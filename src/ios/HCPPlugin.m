@@ -334,10 +334,15 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
  */
 - (NSString *)currentHashHistoryPath {
 #ifdef __CORDOVA_4_0_0
-    NSString *currentUrl = [self.webViewEngine URL].absoluteString;
+    UIWebView *view = (UIWebView*)self.webViewEngine.engineWebView;
 #else
-    NSString *currentUrl = [self.webView.request URL].absoluteString;
+    UIWebView *view = self.webView;
 #endif
+    // More standard view.request.URL.absoluteString property does not pick up changes
+    // to the actual cordova "browser" location caused by history.pushState,
+    // so in most cases the current application path won't be retrieved.
+    // Instead, we use JS to check the current window href.
+    NSString *currentUrl = [view stringByEvaluatingJavaScriptFromString:@"window.location.href"];
 
     NSRange hashPosition = [currentUrl rangeOfString: @"#" options:(NSBackwardsSearch)];
     if (hashPosition.location == NSNotFound) {
