@@ -246,9 +246,18 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
  *
  *  @param url url to load
  */
-- (void)loadURL:(NSString *)url {
+- (void)redirectToIndexPageWithCurrentApplicationPath {
     [[NSOperationQueue mainQueue] addOperationWithBlock:^{
-        NSURL *loadURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@/%@", _filesStructure.wwwFolder.absoluteString, url]];
+
+        NSString *indexPage = [self indexPageFromConfigXml];
+        NSString *currentPath = [self currentHashHistoryPath];
+
+        NSString *redirectAppPath = [indexPage stringByAppendingString:currentPath];
+
+        NSString *redirectFilePath = [NSString stringWithFormat:@"%@/%@", _filesStructure.wwwFolder.absoluteString, redirectAppPath];
+
+        NSURL *loadURL = [NSURL URLWithString:redirectFilePath];
+
         NSURLRequest *request = [NSURLRequest requestWithURL:loadURL
                                                  cachePolicy:NSURLRequestReloadIgnoringCacheData
                                              timeoutInterval:10000];
@@ -350,18 +359,6 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
     }
 
     return [currentUrl substringFromIndex: hashPosition.location];
-}
-
-/**
- *  Get index page file with current path for the application.
- *
- *  @return application's index page with current path
- */
-- (NSString *)indexPageWithCurrentApplicationPath {
-    NSString *indexPage = [self indexPageFromConfigXml];
-    NSString *currentPath = [self currentHashHistoryPath];
-
-    return [indexPage stringByAppendingString:currentPath];
 }
 
 /**
@@ -690,7 +687,7 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
     [self invokeDefaultCallbackWithMessage:pluginResult];
     
     // reload application to the current path with index page located in the new folder
-    [self loadURL:[self indexPageWithCurrentApplicationPath]];
+    [self redirectToIndexPageWithCurrentApplicationPath];
     
     [self cleanupFileSystemFromOldReleases];
 }
@@ -712,7 +709,7 @@ static NSString *const DEFAULT_STARTING_PAGE = @"index.html";
         [self loadApplicationConfig];
     }
     
-    [self loadURL:[self indexPageWithCurrentApplicationPath]];
+    [self redirectToIndexPageWithCurrentApplicationPath];
 }
 
 /**
