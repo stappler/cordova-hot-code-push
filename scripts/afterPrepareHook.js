@@ -16,18 +16,17 @@ If you want to specify for which server to build the project - you can create ch
   }
 File contains list of build options in JSON format.
 After it is set you can run build command like that:
-  cordova build -- build_name_1
+  cordova build -- chcp-build_name_1
 
 If no option is provided - hook will use .chcpenv file to build for local development.
-More information can be found on https://github.com/nordnet/cordova-hot-code-push.
+More information can be found on https://github.com/nordnet/cordova-hot-code-push/wiki/Build-options.
 */
 
 var chcpBuildOptions = require('./lib/chcpBuildOptions.js');
-var chcpConfigXmlReader = require('./lib/chcpConfigXmlReader.js');
+var rootConfigXmlReader = require('./lib/rootConfigXmlReader.js');
 var chcpConfigXmlWriter = require('./lib/chcpConfigXmlWriter.js');
 var iosWKWebViewEngineSupport = require('./lib/iosWKWebViewEngineSupport.js');
 var BUILD_OPTION_PREFIX = 'chcp-';
-var RELEASE_BUILD_FLAG = '--release';
 
 function logStart() {
   console.log('CHCP plugin after prepare hook:');
@@ -48,44 +47,6 @@ function printLog(msg) {
 function processConsoleOptions(ctx) {
   var consoleOptions = ctx.opts.options;
 
-  // If we are using Cordova 5.3.3 or lower - arguments are array of strings.
-  // Will be removed after some time.
-  if (consoleOptions instanceof Array) {
-    return processConsoleOptions_cordova_53(consoleOptions);
-  }
-
-  // for newer version of Cordova - they are an object of properties
-  return processConsoleOptions_cordova_54(consoleOptions);
-}
-
-function processConsoleOptions_cordova_53(consoleOptions) {
-  var parsedOptions = {
-    isRelease: false,
-    buildOption: ''
-  };
-
-  // Search for release flag, or plugin-specific build options.
-  for (var idx in consoleOptions) {
-    var opt = consoleOptions[idx];
-    if (opt === RELEASE_BUILD_FLAG) {
-      parsedOptions.isRelease = true;
-      break;
-    } else if (opt.indexOf(BUILD_OPTION_PREFIX) == 0) {
-      parsedOptions.buildOption = opt.replace(BUILD_OPTION_PREFIX, '');
-      break;
-    }
-  }
-
-  return parsedOptions;
-}
-
-function isString(s) {
-  return typeof(s) === 'string' || s instanceof String;
-}
-
-function processConsoleOptions_cordova_54(consoleOptions) {
-  // For now it's like this for backwards capability.
-  // Will be simplified later, when Cordova 5.4.x will be used more wide.
   var parsedOptions = {
     isRelease: false,
     buildOption: ''
@@ -115,6 +76,11 @@ function processConsoleOptions_cordova_54(consoleOptions) {
   }
 
   return parsedOptions;
+}
+
+
+function isString(s) {
+  return typeof(s) === 'string' || s instanceof String;
 }
 
 /**
@@ -178,8 +144,8 @@ module.exports = function(ctx) {
     return;
   }
 
-  // read plugin preferences from config.xml
-  chcpXmlOptions = chcpConfigXmlReader.readOptions(ctx);
+  // read plugin preferences from root config.xml
+  chcpXmlOptions = rootConfigXmlReader.readChcpOptions(ctx);
 
   // if any build option is provided in console - try to map it with chcpbuild.options
   if (prepareWithCustomBuildOption(ctx, consoleOptions.buildOption, chcpXmlOptions)) {

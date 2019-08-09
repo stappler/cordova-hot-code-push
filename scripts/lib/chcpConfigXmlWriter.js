@@ -6,6 +6,7 @@ We will use it to inject plugin-specific options.
 
 var path = require('path');
 var xmlHelper = require('./xmlHelper.js');
+var rootConfig = require('./rootConfigXmlReader');
 var cordovaContext;
 var projectRoot;
 var platforms;
@@ -42,36 +43,12 @@ function setup(context) {
 }
 
 /**
- * Get name of the current project.
- *
- * @param {Object} ctx - cordova context instance
- * @param {String} projectRoot - current root of the project
- *
- * @return {String} name of the project
- */
-function getProjectName(ctx, projectRoot) {
-  var cordova_util = ctx.requireCordovaModule('cordova-lib/src/cordova/util');
-  var xml = cordova_util.projectConfig(projectRoot);
-  var ConfigParser;
-
-  // If we are running Cordova 5.4 or abova - use parser from cordova-common.
-  // Otherwise - from cordova-lib.
-  try {
-    ConfigParser = ctx.requireCordovaModule('cordova-common/src/ConfigParser/ConfigParser');
-  } catch (e) {
-    ConfigParser = ctx.requireCordovaModule('cordova-lib/src/configparser/ConfigParser')
-  }
-
-  return new ConfigParser(xml).name();
-}
-
-/**
  * Get path to config.xml inside iOS project.
  *
  * @return {String} absolute path to config.xml file
  */
 function pathToIosConfigXml() {
-  var projectName = getProjectName(cordovaContext, projectRoot);
+  var projectName = rootConfig.readProjectName(cordovaContext);
 
   return path.join(projectRoot, 'platforms', 'ios', projectName, 'config.xml');
 }

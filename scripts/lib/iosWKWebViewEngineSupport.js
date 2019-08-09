@@ -6,11 +6,12 @@ Mainly, it has only two method: to activate and to deactivate swift support in t
 var path = require('path');
 var fs = require('fs');
 var strFormat = require('util').format;
+var xcode = require('xcode');
+var rootConfig = require('./rootConfigXmlReader');
 var COMMENT_KEY = /_comment$/;
 var WKWEBVIEW_PLUGIN_NAME = 'cordova-plugin-wkwebview-engine';
 var WKWEBVIEW_MACRO = 'WK_WEBVIEW_ENGINE_IS_USED';
 var isWkWebViewEngineUsed = 0;
-var context;
 var projectRoot;
 var projectName;
 var iosPlatformPath;
@@ -41,9 +42,8 @@ function setWKWebViewEngineMacro(cordovaContext) {
  * @param {Object} ctx - cordova context instance
  */
 function init(ctx) {
-  context = ctx;
   projectRoot = ctx.opts.projectRoot;
-  projectName = getProjectName(ctx, projectRoot);
+  projectName = rootConfig.readProjectName(ctx);
   iosPlatformPath = path.join(projectRoot, 'platforms', 'ios');
 
   var wkWebViewPluginPath = path.join(projectRoot, 'plugins', WKWEBVIEW_PLUGIN_NAME);
@@ -68,72 +68,22 @@ function isDirectoryExists(dir) {
  */
 function loadProjectFile() {
   try {
-    return loadProjectFile_cordova_7_and_above();
+    var pbxPath = path.join(iosPlatformPath, projectName + '.xcodeproj', 'project.pbxproj');
+    var xcodeproj = xcode.project(pbxPath);
+    xcodeproj.parseSync();
+
+    var saveProj = function() {
+      fs.writeFileSync(pbxPath, xcodeproj.writeSync());
+    };
+
+    return {
+      xcode: xcodeproj,
+      write: saveProj
+    };
   } catch(e) {
+    console.log(e);
+    throw new Error('Failed to load iOS project file.');
   }
-  
-  try {
-    return loadProjectFile_cordova_5_and_6();
-  } catch(e) {
-  }
-
-  try {
-    return loadProjectFile_cordova_pre_5();
-  } catch (e) {
-  }
-
-  throw new Error('Failed to load iOS project file. Maybe your Cordova version is not supported?');
-}
-
-function loadProjectFile_cordova_pre_5() {
-  var platformIos = context.requireCordovaModule('cordova-lib/src/plugman/platforms')['ios'];
-
-  return platformIos.parseProjectFile(iosPlatformPath);
-}
-
-function loadProjectFile_cordova_5_and_6() {
-  var platformIos = context.requireCordovaModule('cordova-lib/src/plugman/platforms/ios');
-  
-  return platformIos.parseProjectFile(iosPlatformPath);
-}
-
-function loadProjectFile_cordova_7_and_above() {
-  var pbxPath = path.join(iosPlatformPath, projectName + '.xcodeproj', 'project.pbxproj');
-  var xcodeproj = context.requireCordovaModule('xcode').project(pbxPath);
-  xcodeproj.parseSync();
-
-  var saveProj = function() {
-    fs.writeFileSync(pbxPath, xcodeproj.writeSync());
-  };
-
-  return {
-    xcode: xcodeproj,
-    write: saveProj
-  };
-}
-
-/**
- * Get name of the current project.
- *
- * @param {Object} ctx - cordova context instance
- * @param {String} projectRoot - current root of the project
- *
- * @return {String} name of the project
- */
-function getProjectName(ctx, projectRoot) {
-  var cordova_util = ctx.requireCordovaModule('cordova-lib/src/cordova/util');
-  var xml = cordova_util.projectConfig(projectRoot);
-  var ConfigParser;
-
-  // If we are running Cordova 5.4 or abova - use parser from cordova-common.
-  // Otherwise - from cordova-lib.
-  try {
-    ConfigParser = ctx.requireCordovaModule('cordova-common/src/ConfigParser/ConfigParser');
-  } catch (e) {
-    ConfigParser = ctx.requireCordovaModule('cordova-lib/src/configparser/ConfigParser')
-  }
-
-  return new ConfigParser(xml).name();
 }
 
 /**
